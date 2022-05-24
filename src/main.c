@@ -11,13 +11,6 @@
 #include <logging/log.h>
 #include <dk_buttons_and_leds.h>
 
-/* STEP 3 - Include the header file of the I2C API */
-#include <drivers/i2c.h>
-/* STEP 4.1 - Include the header file of printk() */
-#include <sys/printk.h>
-/* 1000 msec = 1 sec */
-#define SLEEP_TIME_MS   1000
-
 #include "adxl345.h"
 
 #include "remote.h"
@@ -26,7 +19,7 @@
 LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #define RUN_STATUS_LED DK_LED1
 #define CONN_STATUS_LED DK_LED2
-#define RUN_LED_BLINK_INTERVAL 100
+#define RUN_LED_BLINK_INTERVAL 250
 
 static struct bt_conn *current_conn;
 bool isNotify = false;
@@ -177,7 +170,7 @@ void main(void)
         }
 		
 		if(isNotify){
-			err = send_button_notification(current_conn, (uint8_t*)&adxl345_data, sizeof(adxl345_data));
+			err = send_adxl345_notification(current_conn, (uint8_t*)&adxl345_data, sizeof(adxl345_data));
 			if (err) {
 				LOG_ERR("Couldn't send notificaton. (err: %d)", err);
 			}
