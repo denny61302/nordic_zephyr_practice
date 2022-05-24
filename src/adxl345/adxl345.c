@@ -23,12 +23,13 @@ int adxl345_init(const struct device *dev_i2c)
     return ret;
 }
 
-int readXYZ(const struct device *dev_i2c, int16_t *x, int16_t *y, int16_t *z)
+int readXYZ(const struct device *dev_i2c, struct adxl345_data *adxl345_data)
 {
     int ret;
     
     uint8_t acc_reading[6]= {0};
     uint8_t sensor_regs[6] ={DATAX0,DATAX1,DATAY0,DATAY1,DATAZ0,DATAZ1};
+
     ret = i2c_write_read(dev_i2c,ADXL345_ADDR,&sensor_regs[0],1,&acc_reading[0],1);
     if(ret != 0){
         LOG_INF("Failed to write/read I2C device address %x at Reg. %x \n", ADXL345_ADDR,sensor_regs[0]);
@@ -55,9 +56,9 @@ int readXYZ(const struct device *dev_i2c, int16_t *x, int16_t *y, int16_t *z)
     }
 
     /* STEP 10 - Convert the two bytes to a 12-bits */
-    *x = ((int16_t)acc_reading[1] << 8) + acc_reading[0];
-    *y = ((int16_t)acc_reading[3] << 8) + acc_reading[2];
-    *z = ((int16_t)acc_reading[5] << 8) + acc_reading[4];
+    adxl345_data->x = ((int16_t)acc_reading[1] << 8) + acc_reading[0];
+    adxl345_data->y = ((int16_t)acc_reading[3] << 8) + acc_reading[2];
+    adxl345_data->z = ((int16_t)acc_reading[5] << 8) + acc_reading[4];
 
     return ret;
 }

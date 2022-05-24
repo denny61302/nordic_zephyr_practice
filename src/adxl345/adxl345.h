@@ -21,7 +21,18 @@ local, and you've found our code helpful, please buy us a round!
 #include <sys/util.h>
 #include <zephyr.h>
 #include <logging/log.h>
-#include <drivers/i2c.h>    
+#include <drivers/i2c.h>   
+
+/* STEP 5 - Get the label of the I2C controller connected to your sensor */
+/* The devicetree node identifier for the "i2c0" */
+#define I2C0_NODE DT_NODELABEL(i2c0)
+#if DT_NODE_HAS_STATUS(I2C0_NODE, okay)
+#define I2C0	DT_LABEL(I2C0_NODE)
+#else
+/* A build error here means your board does not have I2C enabled. */
+#error "i2c0 devicetree node is disabled"
+#define I2C0	""
+#endif
 // This is the right justified address of the accelerometer, when the SDO pin
 //  is grounded (as it is in our application).
 #define ADXL345_ADDR 0x1D
@@ -59,9 +70,19 @@ local, and you've found our code helpful, please buy us a round!
 #define FIFO_CTL        0x38   // FIFO control
 #define FIFO_STATUS     0x39   // FIFO status
 
+struct adxl345_data
+{
+    /* data */
+    int16_t x;
+    int16_t y;
+    int16_t z;
+};
+
+
 enum {Aup = 1, Bup, Cup, Dup, Topup, Botup};
 
 int adxl345_init(const struct device *dev_i2c);
-int readXYZ(const struct device *dev_i2c, int16_t *x, int16_t *y, int16_t *z);
+int readXYZ(const struct device *dev_i2c, struct adxl345_data *adxl345_data);
+void adxl345_main_loop();
 
 #endif
