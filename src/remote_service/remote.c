@@ -100,7 +100,7 @@ void set_button_value(uint8_t btn_value)
     button_value = btn_value;
 }
 
-int send_button_notification(struct bt_conn *conn, uint8_t value, uint16_t length)
+int send_button_notification(struct bt_conn *conn, uint8_t *value, uint16_t length)
 {
     int err = 0;
 
@@ -108,7 +108,7 @@ int send_button_notification(struct bt_conn *conn, uint8_t value, uint16_t lengt
     const struct bt_gatt_attr *attr = &remote_srv.attrs[2];
 
     params.attr = attr;
-    params.data = &value;
+    params.data = value;
     params.len = length;
     params.func = on_sent;
 
