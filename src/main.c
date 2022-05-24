@@ -152,72 +152,36 @@ void main(void)
 	int ret;
 	int err;
     int blink_status = 0;
+
+	int16_t x, y, z;
+
 	LOG_INF("Hello World! %s\n", CONFIG_BOARD);
 
 	configure_dk_buttons_leds();
 
-	err = bluetooth_init(&bluetooth_callbacks, &remote_service_callbacks);
-    if (err) {
-        LOG_INF("Couldn't initialize Bluetooth. err: %d", err);
-    }
+	// err = bluetooth_init(&bluetooth_callbacks, &remote_service_callbacks);
+    // if (err) {
+    //     LOG_INF("Couldn't initialize Bluetooth. err: %d", err);
+    // }
 
-/* STEP 6 - Get the binding of the I2C driver  */
+	/* Get the binding of the I2C driver  */
 	const struct device *dev_i2c = device_get_binding(I2C0);
 	if (dev_i2c == NULL) {
 		LOG_INF("Could not find  %s!\n\r",I2C0);
 		return;
 	}
-/* STEP 8 - Setup the sensor by writing the value 0x8C to the Configuration register */
-	uint8_t config[2] = {POWER_CTL,0x08};
-	ret = i2c_write(dev_i2c, config, sizeof(config), ADXL345_ADDR);
+	
+	/* Setup the sensor */
+	ret = adxl345_init(dev_i2c);
 	if(ret != 0){
-		LOG_INF("Failed to write to I2C device address %x at Reg. %x \n", ADXL345_ADDR,config[0]);
-	}
-
-	config[0] = DATA_FORMAT;
-	config[1] = 0x00;
-	ret = i2c_write(dev_i2c, config, sizeof(config), ADXL345_ADDR);
-	if(ret != 0){
-		LOG_INF("Failed to write to I2C device address %x at Reg. %x \n", ADXL345_ADDR,config[0]);
-	}
+        LOG_INF("Failed to init ADXL345");
+    }
 
 	while (1) {
 
-		dk_set_led(RUN_STATUS_LED, (blink_status++)%2);
+		dk_set_led(RUN_STATUS_LED, (blink_status++)%2);		
 
-		/* STEP 9 - Read the temperature from the sensor */
-		uint8_t acc_reading[6]= {0};
-		uint8_t sensor_regs[6] ={DATAX0,DATAX1,DATAY0,DATAY1,DATAZ0,DATAZ1};
-		ret = i2c_write_read(dev_i2c,ADXL345_ADDR,&sensor_regs[0],1,&acc_reading[0],1);
-		if(ret != 0){
-			LOG_INF("Failed to write/read I2C device address %x at Reg. %x \n", ADXL345_ADDR,sensor_regs[0]);
-		}
-		ret = i2c_write_read(dev_i2c,ADXL345_ADDR,&sensor_regs[1],1,&acc_reading[1],1);
-		if(ret != 0){
-			LOG_INF("Failed to write/read I2C device address %x at Reg. %x \n", ADXL345_ADDR,sensor_regs[1]);
-		}
-		ret = i2c_write_read(dev_i2c,ADXL345_ADDR,&sensor_regs[2],1,&acc_reading[2],1);
-		if(ret != 0){
-			LOG_INF("Failed to write/read I2C device address %x at Reg. %x \n", ADXL345_ADDR,sensor_regs[2]);
-		}
-		ret = i2c_write_read(dev_i2c,ADXL345_ADDR,&sensor_regs[3],1,&acc_reading[3],1);
-		if(ret != 0){
-			LOG_INF("Failed to write/read I2C device address %x at Reg. %x \n", ADXL345_ADDR,sensor_regs[3]);
-		}
-		ret = i2c_write_read(dev_i2c,ADXL345_ADDR,&sensor_regs[4],1,&acc_reading[4],1);
-		if(ret != 0){
-			LOG_INF("Failed to write/read I2C device address %x at Reg. %x \n", ADXL345_ADDR,sensor_regs[4]);
-		}
-		ret = i2c_write_read(dev_i2c,ADXL345_ADDR,&sensor_regs[5],1,&acc_reading[5],1);
-		if(ret != 0){
-			LOG_INF("Failed to write/read I2C device address %x at Reg. %x \n", ADXL345_ADDR,sensor_regs[5]);
-		}
-
-		/* STEP 10 - Convert the two bytes to a 12-bits */
-		int16_t x = ((int16_t)acc_reading[1] << 8) + acc_reading[0];
-		int16_t y = ((int16_t)acc_reading[3] << 8) + acc_reading[2];
-		int16_t z = ((int16_t)acc_reading[5] << 8) + acc_reading[4];
-
+		readXYZ(dev_i2c, &x, &y, &z);
 		//Print reading to console  
 		LOG_INF("ACC X : %d, Y: %d, Z: %d \r\n", x, y, z);
 

@@ -19,7 +19,9 @@ local, and you've found our code helpful, please buy us a round!
 #ifndef __adxl345_h__
 #define __adxl345_h__
 #include <sys/util.h>
-    
+#include <zephyr.h>
+#include <logging/log.h>
+#include <drivers/i2c.h>    
 // This is the right justified address of the accelerometer, when the SDO pin
 //  is grounded (as it is in our application).
 #define ADXL345_ADDR 0x1D
@@ -59,7 +61,7 @@ local, and you've found our code helpful, please buy us a round!
 
 enum {Aup = 1, Bup, Cup, Dup, Topup, Botup};
 
-void readXYZ(int16_t *x, int16_t *y, int16_t *z);
-void configureXl(void);
+int adxl345_init(const struct device *dev_i2c);
+int readXYZ(const struct device *dev_i2c, int16_t *x, int16_t *y, int16_t *z);
 
 #endif
