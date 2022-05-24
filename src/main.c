@@ -18,19 +18,7 @@
 /* 1000 msec = 1 sec */
 #define SLEEP_TIME_MS   1000
 
-/* STEP 7 - Define the I2C slave device address and the addresses of relevant registers */
 #include "adxl345.h"
-
-/* STEP 5 - Get the label of the I2C controller connected to your sensor */
-/* The devicetree node identifier for the "i2c0" */
-#define I2C0_NODE DT_NODELABEL(i2c0)
-#if DT_NODE_HAS_STATUS(I2C0_NODE, okay)
-#define I2C0	DT_LABEL(I2C0_NODE)
-#else
-/* A build error here means your board does not have I2C enabled. */
-#error "i2c0 devicetree node is disabled"
-#define I2C0	""
-#endif
 
 #include "remote.h"
 
@@ -38,16 +26,16 @@
 LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #define RUN_STATUS_LED DK_LED1
 #define CONN_STATUS_LED DK_LED2
-#define RUN_LED_BLINK_INTERVAL 1000
+#define RUN_LED_BLINK_INTERVAL 100
 
 static struct bt_conn *current_conn;
+bool isNotify = false;
 
 /* Declarations */
 void on_connected(struct bt_conn *conn, uint8_t err);
 void on_disconnected(struct bt_conn *conn, uint8_t reason);
 void on_notif_changed(enum bt_button_notifications_enabled status);
 void on_data_received(struct bt_conn *conn, const uint8_t *const data, uint16_t len);
-
 
 struct bt_conn_cb bluetooth_callbacks = {
 	.connected 		= on_connected,
@@ -84,8 +72,10 @@ void on_disconnected(struct bt_conn *conn, uint8_t reason)
 void on_notif_changed(enum bt_button_notifications_enabled status)
 {
     if (status == BT_BUTTON_NOTIFICATIONS_ENABLED) {
+		isNotify = true;
         LOG_INF("Notifications enabled");
     } else {
+		isNotify = false;
         LOG_INF("Notifications disabled");
     }
 }
@@ -125,7 +115,7 @@ void button_handler(uint32_t button_state, uint32_t has_changed)
 		}
         LOG_INF("Button %d pressed.", button_pressed);       
 		set_button_value(button_pressed);
-		err = send_button_notification(current_conn, button_pressed, 1);
+		err = send_button_notification(current_conn, &button_pressed, 1);
 		if (err) {
             LOG_ERR("Couldn't send notificaton. (err: %d)", err);
         }
@@ -153,16 +143,16 @@ void main(void)
 	int err;
     int blink_status = 0;
 
-	int16_t x, y, z;
+	struct adxl345_data adxl345_data;
 
 	LOG_INF("Hello World! %s\n", CONFIG_BOARD);
 
 	configure_dk_buttons_leds();
 
-	// err = bluetooth_init(&bluetooth_callbacks, &remote_service_callbacks);
-    // if (err) {
-    //     LOG_INF("Couldn't initialize Bluetooth. err: %d", err);
-    // }
+	err = bluetooth_init(&bluetooth_callbacks, &remote_service_callbacks);
+    if (err) {
+        LOG_INF("Couldn't initialize Bluetooth. err: %d", err);
+    }
 
 	/* Get the binding of the I2C driver  */
 	const struct device *dev_i2c = device_get_binding(I2C0);
@@ -170,7 +160,7 @@ void main(void)
 		LOG_INF("Could not find  %s!\n\r",I2C0);
 		return;
 	}
-	
+
 	/* Setup the sensor */
 	ret = adxl345_init(dev_i2c);
 	if(ret != 0){
@@ -181,9 +171,20 @@ void main(void)
 
 		dk_set_led(RUN_STATUS_LED, (blink_status++)%2);		
 
-		readXYZ(dev_i2c, &x, &y, &z);
+		ret = readXYZ(dev_i2c, &adxl345_data);
+        if(ret != 0){
+            LOG_INF("Failed to read adxl345 data");
+        }
+		
+		if(isNotify){
+			err = send_button_notification(current_conn, (uint8_t*)&adxl345_data, sizeof(adxl345_data));
+			if (err) {
+				LOG_ERR("Couldn't send notificaton. (err: %d)", err);
+			}
+		}
+		
 		//Print reading to console  
-		LOG_INF("ACC X : %d, Y: %d, Z: %d \r\n", x, y, z);
+		LOG_INF("ACC X : %d, Y: %d, Z: %d \r\n", adxl345_data.x, adxl345_data.y, adxl345_data.z);  
 
 		k_sleep(K_MSEC(RUN_LED_BLINK_INTERVAL));
 	}	
