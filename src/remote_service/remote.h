@@ -1,6 +1,6 @@
 
 #include <zephyr.h>
-#include <logging/log.h>
+// #include <logging/log.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/uuid.h>

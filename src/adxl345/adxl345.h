@@ -20,7 +20,6 @@ local, and you've found our code helpful, please buy us a round!
 #define __adxl345_h__
 #include <sys/util.h>
 #include <zephyr.h>
-#include <logging/log.h>
 #include <drivers/i2c.h>   
 
 /* STEP 5 - Get the label of the I2C controller connected to your sensor */

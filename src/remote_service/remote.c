@@ -1,7 +1,7 @@
 #include "remote.h"
 
-#define LOG_MODULE_NAME remote
-LOG_MODULE_REGISTER(LOG_MODULE_NAME);
+// #define LOG_MODULE_NAME remote
+// LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
 static K_SEM_DEFINE(bt_init_ok, 0, 1);
 
@@ -49,7 +49,7 @@ BT_GATT_PRIMARY_SERVICE(BT_UUID_REMOTE_SERVICE),
 void bt_ready(int err)
 {
     if (err) {
-        LOG_ERR("bt_ready returned %d", err);
+        printk("bt_ready returned %d\n", err);
     }
 
     k_sem_give(&bt_init_ok);
@@ -78,7 +78,7 @@ static ssize_t read_button_characteristic_cb(struct bt_conn *conn, const struct 
 void adxl345_chrc_ccc_cfg_changed(const struct bt_gatt_attr *attr, uint16_t value)
 {
     bool notif_enabled = (value == BT_GATT_CCC_NOTIFY);
-    LOG_INF("Notifications %s", notif_enabled? "enabled":"disabled");
+    printk("Notifications %s\n", notif_enabled? "enabled":"disabled");
     notifications_enabled = notif_enabled ? BT_BUTTON_NOTIFICATIONS_ENABLED:BT_BUTTON_NOTIFICATIONS_DISABLED;
 
     if (remote_service_callbacks.notif_changed) {
@@ -89,7 +89,7 @@ void adxl345_chrc_ccc_cfg_changed(const struct bt_gatt_attr *attr, uint16_t valu
 void on_sent(struct bt_conn *conn, void *user_data)
 {
     ARG_UNUSED(user_data);
-    LOG_INF("Notification sent on connection %p", (void *)conn);
+    printk("Notification sent on connection %p\n", (void *)conn);
 }
 
 static ssize_t on_write(struct bt_conn *conn,
@@ -99,7 +99,7 @@ static ssize_t on_write(struct bt_conn *conn,
                         uint16_t offset,
                         uint8_t flags)
 {
-    LOG_INF("Received data, handle %d, conn %p",
+    printk("Received data, handle %d, conn %p\n",
         attr->handle, (void *)conn);
 
     if (remote_service_callbacks.data_received) {
@@ -152,7 +152,7 @@ int send_adxl345_notification(struct bt_conn *conn, uint8_t *value, uint16_t len
 int bluetooth_init(struct bt_conn_cb *bt_cb, struct bt_remote_service_cb *remote_cb)
 {
     int err;
-    LOG_INF("Initializing bluetooth\n");
+    printk("Initializing bluetooth\n");
 
     if (bt_cb == NULL || remote_cb == NULL) {
         return NRFX_ERROR_NULL;
@@ -163,7 +163,7 @@ int bluetooth_init(struct bt_conn_cb *bt_cb, struct bt_remote_service_cb *remote
 
     err = bt_enable(bt_ready);
     if (err) {
-        LOG_ERR("bt_enable returned %d", err);
+        printk("bt_enable returned %d\n", err);
         return err;
     }
 
@@ -171,7 +171,7 @@ int bluetooth_init(struct bt_conn_cb *bt_cb, struct bt_remote_service_cb *remote
 
     err = bt_le_adv_start(BT_LE_ADV_CONN, ad, ARRAY_SIZE(ad), sd, ARRAY_SIZE(sd));
     if (err){
-        LOG_ERR("couldn't start advertising (err = %d", err);
+        printk("couldn't start advertising (err = %d\n", err);
         return err;
     }
 
