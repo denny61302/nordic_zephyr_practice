@@ -11,12 +11,22 @@
 // #include <logging/log.h>
 #include <dk_buttons_and_leds.h>
 
-#include "adxl345.h"
+// #include "adxl345.h"
+#include <drivers/sensor.h>
+#if !DT_HAS_COMPAT_STATUS_OKAY(adi_adxl345)
+#error "No adi,adxl345 compatible node found in the device tree"
+#endif
+
+struct adxl345_data
+{
+    /* data */
+    int16_t x;
+    int16_t y;
+    int16_t z;
+};
 
 #include "remote.h"
 
-// #define LOG_MODULE_NAME app
-// LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #define RUN_STATUS_LED DK_LED1
 #define CONN_STATUS_LED DK_LED2
 #define RUN_LED_BLINK_INTERVAL 250
@@ -24,13 +34,6 @@
 static struct bt_conn *current_conn;
 bool isNotify = false;
 int counter = 0;
-
-// static struct k_work my_work;
-
-// static void my_work_fn(struct k_work *work)
-// {
-// 	LOG_ERR("Timer\n");
-// }
 
 void timer_fn(struct k_timer *dummy)
 {
@@ -147,11 +150,10 @@ static void configure_dk_buttons_leds(void)
 
 void main(void)
 {
-
-	int ret;
 	int err;
     int blink_status = 0;
 
+	struct sensor_value accel[3];
 	struct adxl345_data adxl345_data;
 
 	printk("Hello World! %s\n", CONFIG_BOARD);
@@ -164,34 +166,31 @@ void main(void)
 		return;
     }
 
-	/* Get the binding of the I2C driver  */
-	const struct device *dev_i2c = device_get_binding(I2C0);
-	if (dev_i2c == NULL) {
-		printk("Could not find  %s!\n",I2C0);
+	const struct device *sensor = DEVICE_DT_GET(DT_INST(0, adi_adxl345));
+
+	if (sensor == NULL || !device_is_ready(sensor)) {
+		printf("Could not get %s device\n", DT_LABEL(DT_INST(0, adi_adxl345)));
 		return;
 	}
 
-	/* Setup the sensor */
-	ret = adxl345_init(dev_i2c);
-	if(ret != 0){
-        printk("Failed to init ADXL345\n");
-		return;
-    }
-
 	k_timer_init(&my_timer, timer_fn, NULL);
 	k_timer_start(&my_timer, K_NO_WAIT, K_MSEC(250));	
-	// k_work_init(&my_work, my_work_fn);
 
 	while (1) {
 
 		if(counter != 0){
 			counter = 0;
-			dk_set_led(RUN_STATUS_LED, (blink_status++)%2);			
+			dk_set_led(RUN_STATUS_LED, (blink_status++)%2);		
 
-			ret = readXYZ(dev_i2c, &adxl345_data);
-			if(ret != 0){
-			    printk("Failed to read adxl345 data\n");
-			}
+			if (sensor_sample_fetch(sensor) < 0) {
+				printf("sensor_sample_fetch failed\n");
+			}		
+
+			sensor_channel_get(sensor, SENSOR_CHAN_ACCEL_XYZ, accel);
+
+			adxl345_data.x = (int16_t) sensor_value_to_double(&accel[0]);
+			adxl345_data.y = (int16_t) sensor_value_to_double(&accel[1]);
+			adxl345_data.z = (int16_t) sensor_value_to_double(&accel[2]);
 			
 			if(isNotify){
 				err = send_adxl345_notification(current_conn, (uint8_t*)&adxl345_data, sizeof(adxl345_data));
@@ -200,24 +199,68 @@ void main(void)
 				}
 			}
 			printk("ACC X : %d, Y: %d, Z: %d \r\n", adxl345_data.x, adxl345_data.y, adxl345_data.z); 
-		}
-		// dk_set_led(RUN_STATUS_LED, (blink_status++)%2);			
-
-		// ret = readXYZ(dev_i2c, &adxl345_data);
-        // if(ret != 0){
-        //     LOG_INF("Failed to read adxl345 data");
-        // }
-		
-		// if(isNotify){
-		// 	err = send_adxl345_notification(current_conn, (uint8_t*)&adxl345_data, sizeof(adxl345_data));
-		// 	if (err) {
-		// 		LOG_ERR("Couldn't send notificaton. (err: %d)", err);
-		// 	}
-		// }
-		
-		// //Print reading to console  
-		// LOG_INF("ACC X : %d, Y: %d, Z: %d \r\n", adxl345_data.x, adxl345_data.y, adxl345_data.z);  
-
-		// k_sleep(K_MSEC(RUN_LED_BLINK_INTERVAL));
+		}		
 	}	
 }
+
+
+// #include <zephyr.h>
+// #include "adxl345.h"
+// #define APP_EVENT_QUEUE_SIZE 20
+
+// enum app_event_type
+// {
+// 	APP_EVENT_TIMER,
+// 	APP_EVENT_SENSOR_DATA,
+// };
+
+// struct app_event
+// {
+// 	enum app_event_type type;
+// 	union 
+// 	{
+// 		int err;
+// 		uint32_t value;
+// 	};	
+// };
+
+// K_MSGQ_DEFINE(app_msgq, sizeof(struct app_event), APP_EVENT_QUEUE_SIZE, 4);
+
+// void timer_expiry_fn(struct k_timer *dummy)
+// {
+// 	struct app_event evt = {
+// 		.type = APP_EVENT_TIMER,
+// 		.value = 1234,
+// 	};
+
+// 	k_msgq_put(&app_msgq, &evt, K_NO_WAIT);
+// }
+
+// K_TIMER_DEFINE(timer, timer_expiry_fn, NULL);
+
+// void main(void)
+// {
+// 	struct app_event evt;
+
+// 	printk("We are started\n");
+
+// 	k_timer_start(&timer, K_SECONDS(1), K_SECONDS(1));
+
+// 	while (true)
+// 	{
+// 		k_msgq_get(&app_msgq, &evt, K_FOREVER);
+
+// 		printk("EVENT type: %i\n", evt.type);
+
+// 		switch (evt.type)
+// 		{
+// 		case APP_EVENT_TIMER:
+// 			printk("EVENT value: %i\n", evt.value);
+// 			break;
+		
+// 		default:
+// 			break;
+// 		}
+// 	}
+	
+// }
