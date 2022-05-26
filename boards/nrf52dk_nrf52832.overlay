@@ -1,0 +1,7 @@
+&i2c0 {
+    adxl345@0 {
+		compatible = "adi,adxl345";
+		label = "ADXL345";
+		reg = <0x1D>;
+	};
+};
