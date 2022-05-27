@@ -18,7 +18,10 @@ static const struct bt_data ad[] = {
 };
 
 static const struct bt_data sd[] = {
-    BT_DATA_BYTES(BT_DATA_UUID128_ALL, BT_UUID_REMOTE_SERV_VAL),
+    // BT_DATA_BYTES(BT_DATA_UUID128_ALL, BT_UUID_REMOTE_SERV_VAL),
+    BT_DATA_BYTES(BT_DATA_UUID128_ALL,
+		      0x84, 0xaa, 0x60, 0x74, 0x52, 0x8a, 0x8b, 0x86,
+		      0xd3, 0x4c, 0xb7, 0x1d, 0x1d, 0xdc, 0x53, 0x8d),
 };
 
 /* Declarations */
@@ -158,6 +161,10 @@ int bluetooth_init(struct bt_conn_cb *bt_cb, struct bt_remote_service_cb *remote
         return NRFX_ERROR_NULL;
     }
     bt_conn_cb_register(bt_cb);
+    printk("build time: " __DATE__ " " __TIME__ "\n");
+    os_mgmt_register_group();
+    img_mgmt_register_group();
+    smp_bt_register();
     remote_service_callbacks.notif_changed = remote_cb->notif_changed;
     remote_service_callbacks.data_received = remote_cb->data_received;
 

@@ -7,6 +7,10 @@
 #include <bluetooth/gatt.h>
 #include <bluetooth/hci.h>
 
+#include <mgmt/mcumgr/smp_bt.h>
+#include <os_mgmt/os_mgmt.h>
+#include <img_mgmt/img_mgmt.h>
+
 /** @brief UUID of the Remote Service. **/
 #define BT_UUID_REMOTE_SERV_VAL \
 	BT_UUID_128_ENCODE(0xe9ea0001, 0xe19b, 0x482d, 0x9293, 0xc7907585fc48)

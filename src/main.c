@@ -228,7 +228,7 @@ void main(void)
 					printk("Couldn't send notificaton. (err: %d)\n", err);
 				}
 			}
-			printk("ACC X : %d, Y: %d, Z: %d \r\n", adxl345_data.x, adxl345_data.y, adxl345_data.z); 
+			// printk("ACC X : %d, Y: %d, Z: %d \r\n", adxl345_data.x, adxl345_data.y, adxl345_data.z); 
 		}
 		k_sleep(K_MSEC(1));		
 	}	
