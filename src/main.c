@@ -33,15 +33,22 @@ struct adxl345_data
 
 static struct bt_conn *current_conn;
 bool isNotify = false;
-int counter = 0;
+static int counter = 0;
 
-void timer_fn(struct k_timer *dummy)
+// static void repeating_timer_callback(struct k_work *dummy){
+// 	counter++;
+// 	printk("Timer counter %d\n", counter);
+// }
+
+// K_WORK_DEFINE(repeating_timer_work, repeating_timer_callback);
+
+void repeating_timer_handler(struct k_timer *dummy)
 {
-	// k_work_submit(&my_work);
+    // k_work_submit(&repeating_timer_work);
 	counter++;
 }
 
-K_TIMER_DEFINE(my_timer, timer_fn, NULL);
+K_TIMER_DEFINE(my_timer, repeating_timer_handler, NULL);
 
 /* Declarations */
 void on_connected(struct bt_conn *conn, uint8_t err);
@@ -181,12 +188,11 @@ void main(void)
 		// return;
 	}
 
-	k_timer_init(&my_timer, timer_fn, NULL);
+	k_timer_init(&my_timer, repeating_timer_handler, NULL);
 	k_timer_start(&my_timer, K_NO_WAIT, K_MSEC(250));	
 
-	while (1) {
-
-		if(counter != 0){
+	while (1) {		
+		if(counter > 0){
 			counter = 0;
 			dk_set_led(RUN_STATUS_LED, (blink_status++)%2);		
 
@@ -223,7 +229,8 @@ void main(void)
 				}
 			}
 			printk("ACC X : %d, Y: %d, Z: %d \r\n", adxl345_data.x, adxl345_data.y, adxl345_data.z); 
-		}		
+		}
+		k_sleep(K_MSEC(1));		
 	}	
 }
 
