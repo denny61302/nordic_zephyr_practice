@@ -153,7 +153,7 @@ void main(void)
 	int err;
     int blink_status = 0;
 
-	struct sensor_value accel[3];
+	struct sensor_value accel[3], voltage;
 	struct adxl345_data adxl345_data;
 
 	printk("Hello World! %s\n", CONFIG_BOARD);
@@ -169,8 +169,16 @@ void main(void)
 	const struct device *sensor = DEVICE_DT_GET(DT_INST(0, adi_adxl345));
 
 	if (sensor == NULL || !device_is_ready(sensor)) {
-		printf("Could not get %s device\n", DT_LABEL(DT_INST(0, adi_adxl345)));
-		return;
+		printk("Could not get %s device\n", DT_LABEL(DT_INST(0, adi_adxl345)));
+		// return;
+	}
+
+	const struct device *dev = DEVICE_DT_GET(DT_INST(0, ti_bq274xx));
+	
+
+	if (dev == NULL || !device_is_ready(dev)) {
+		printk("Could not get %s device\n", DT_LABEL(DT_INST(0, ti_bq274xx)));
+		// return;
 	}
 
 	k_timer_init(&my_timer, timer_fn, NULL);
@@ -183,7 +191,7 @@ void main(void)
 			dk_set_led(RUN_STATUS_LED, (blink_status++)%2);		
 
 			if (sensor_sample_fetch(sensor) < 0) {
-				printf("sensor_sample_fetch failed\n");
+				printk("sensor_sample_fetch failed\n");
 			}		
 
 			sensor_channel_get(sensor, SENSOR_CHAN_ACCEL_XYZ, accel);
@@ -191,6 +199,22 @@ void main(void)
 			adxl345_data.x = (int16_t) sensor_value_to_double(&accel[0]);
 			adxl345_data.y = (int16_t) sensor_value_to_double(&accel[1]);
 			adxl345_data.z = (int16_t) sensor_value_to_double(&accel[2]);
+
+			err = sensor_sample_fetch_chan(dev,
+						  SENSOR_CHAN_GAUGE_VOLTAGE);
+			if (err < 0) {
+				printk("Unable to fetch the voltage\n");
+				return;
+			}
+
+			err = sensor_channel_get(dev, SENSOR_CHAN_GAUGE_VOLTAGE,
+							&voltage);
+			if (err < 0) {
+				printk("Unable to get the voltage value\n");
+				return;
+			}
+
+			printk("Voltage: %d.%06dV\n", voltage.val1, voltage.val2);
 			
 			if(isNotify){
 				err = send_adxl345_notification(current_conn, (uint8_t*)&adxl345_data, sizeof(adxl345_data));
