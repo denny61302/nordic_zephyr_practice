@@ -12,9 +12,4 @@ target_sources(app PRIVATE
     src/remote_service/remote.c
 )
 
-# target_sources(app PRIVATE
-#     src/adxl345/adxl345.c
-# )
-
 zephyr_library_include_directories(src/remote_service)
-# zephyr_library_include_directories(src/adxl345)

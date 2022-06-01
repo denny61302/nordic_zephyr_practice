@@ -1,17 +1,22 @@
+/*
+ * Copyright (c) 2016 Intel Corporation
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #include <zephyr.h>
-
 #include <device.h>
-#include <drivers/display.h>
-#include <lvgl.h>
-#include <stdio.h>
-#include <string.h>
-
 #include <devicetree.h>
+
+// #include <logging/log.h>
 #include <dk_buttons_and_leds.h>
+
+// #include "adxl345.h"
 #include <drivers/sensor.h>
 #if !DT_HAS_COMPAT_STATUS_OKAY(adi_adxl345)
 #error "No adi,adxl345 compatible node found in the device tree"
 #endif
+
 
 struct adxl345_data
 {
@@ -29,7 +34,6 @@ struct adxl345_data
 
 static struct bt_conn *current_conn;
 bool isNotify = false;
-bool isConnected = false;
 static int counter = 0;
 
 // static void repeating_timer_callback(struct k_work *dummy){
@@ -73,7 +77,6 @@ void on_connected(struct bt_conn *conn, uint8_t err)
 	printk("Connected.\n");
 	current_conn = bt_conn_ref(conn);
 	dk_set_led_on(CONN_STATUS_LED);
-    isConnected = true;
 }
 
 void on_disconnected(struct bt_conn *conn, uint8_t reason)
@@ -84,7 +87,6 @@ void on_disconnected(struct bt_conn *conn, uint8_t reason)
 		bt_conn_unref(current_conn);
 		current_conn = NULL;
 	}	
-    isConnected = false;
 }
 
 void on_notif_changed(enum bt_button_notifications_enabled status)
@@ -159,17 +161,6 @@ void main(void)
 	int err;
     int blink_status = 0;
 
-    uint32_t count = 0U;
-	char count_str[20] = {0};
-    char ble_status_str[20] = {0};
-    char battery_status_str[20] = {0};
-	const struct device *display_dev;
-	lv_obj_t *hello_world_label;
-    lv_obj_t *count_label;
-    lv_obj_t *ble_status_label;
-    lv_obj_t *battery_status_label;
-
-
 	struct sensor_value accel[3], voltage;
 	struct adxl345_data adxl345_data;
 
@@ -197,30 +188,6 @@ void main(void)
 		printk("Could not get %s device\n", DT_LABEL(DT_INST(0, ti_bq274xx)));
 		// return;
 	}
-
-    display_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_display));
-	if (!device_is_ready(display_dev)) {
-		printk("Device not ready, aborting test");
-		return;
-	}
-
-    hello_world_label = lv_label_create(lv_scr_act(), NULL);
-
-    lv_label_set_text(hello_world_label, "Hello world!");
-	lv_obj_align(hello_world_label, NULL, LV_ALIGN_CENTER, 0, 0);
-
-    battery_status_label = lv_label_create(lv_scr_act(), NULL);
-	lv_obj_align(battery_status_label, NULL, LV_ALIGN_IN_TOP_LEFT, 0, 20);
-
-    ble_status_label = lv_label_create(lv_scr_act(), NULL);
-	lv_obj_align(ble_status_label, NULL, LV_ALIGN_IN_TOP_LEFT, 0, 0);
-
-	count_label = lv_label_create(lv_scr_act(), NULL);
-	lv_obj_align(count_label, NULL, LV_ALIGN_IN_BOTTOM_LEFT, 0, 0);
-
-    display_blanking_off(display_dev);
-    lv_task_handler();
-
 
 	k_timer_init(&my_timer, repeating_timer_handler, NULL);
 	k_timer_start(&my_timer, K_NO_WAIT, K_MSEC(250));	
@@ -255,28 +222,77 @@ void main(void)
 			}
 
 			printk("Voltage: %d.%06dV\n", voltage.val1, voltage.val2);
-            sprintf(battery_status_str, "Voltage: %d.%06dV\n", voltage.val1, voltage.val2);
-
-			if(isConnected){
-                sprintf(ble_status_str, "BLE: Connected");
-            } else {
-                sprintf(ble_status_str, "BLE: Disconnected");
-            }
-
+			
 			if(isNotify){
-                sprintf(ble_status_str, "BLE: Notified");
 				err = send_adxl345_notification(current_conn, (uint8_t*)&adxl345_data, sizeof(adxl345_data));
 				if (err) {
 					printk("Couldn't send notificaton. (err: %d)\n", err);
 				}
 			}
-            lv_task_handler();
-            sprintf(count_str, "X:%d,Y:%d,Z:%d", adxl345_data.x, adxl345_data.y, adxl345_data.z);
-			lv_label_set_text(count_label, count_str);
-            lv_label_set_text(ble_status_label, ble_status_str);
-            lv_label_set_text(battery_status_label, battery_status_str);
-			printk("X:%d,Y:%d,Z:%d\r\n", adxl345_data.x, adxl345_data.y, adxl345_data.z); 
+			printk("ACC X : %d, Y: %d, Z: %d \r\n", adxl345_data.x, adxl345_data.y, adxl345_data.z); 
 		}
 		k_sleep(K_MSEC(1));		
 	}	
 }
+
+
+// #include <zephyr.h>
+// #include "adxl345.h"
+// #define APP_EVENT_QUEUE_SIZE 20
+
+// enum app_event_type
+// {
+// 	APP_EVENT_TIMER,
+// 	APP_EVENT_SENSOR_DATA,
+// };
+
+// struct app_event
+// {
+// 	enum app_event_type type;
+// 	union 
+// 	{
+// 		int err;
+// 		uint32_t value;
+// 	};	
+// };
+
+// K_MSGQ_DEFINE(app_msgq, sizeof(struct app_event), APP_EVENT_QUEUE_SIZE, 4);
+
+// void timer_expiry_fn(struct k_timer *dummy)
+// {
+// 	struct app_event evt = {
+// 		.type = APP_EVENT_TIMER,
+// 		.value = 1234,
+// 	};
+
+// 	k_msgq_put(&app_msgq, &evt, K_NO_WAIT);
+// }
+
+// K_TIMER_DEFINE(timer, timer_expiry_fn, NULL);
+
+// void main(void)
+// {
+// 	struct app_event evt;
+
+// 	printk("We are started\n");
+
+// 	k_timer_start(&timer, K_SECONDS(1), K_SECONDS(1));
+
+// 	while (true)
+// 	{
+// 		k_msgq_get(&app_msgq, &evt, K_FOREVER);
+
+// 		printk("EVENT type: %i\n", evt.type);
+
+// 		switch (evt.type)
+// 		{
+// 		case APP_EVENT_TIMER:
+// 			printk("EVENT value: %i\n", evt.value);
+// 			break;
+		
+// 		default:
+// 			break;
+// 		}
+// 	}
+	
+// }
